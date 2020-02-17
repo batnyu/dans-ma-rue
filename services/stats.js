@@ -85,5 +85,29 @@ exports.statsByMonth = (client, callback) => {
 
 exports.statsPropreteByArrondissement = (client, callback) => {
     // TODO Trouver le top 3 des arrondissements avec le plus d'anomalies concernant la propreté
-    callback([]);
+    client.search({
+        index: indexName,
+        body: {
+            "query": {
+                "match": {
+                    "type": "Propreté"
+                }
+            },
+            "size": 0,
+            "aggs": {
+                "arrondissement": {
+                    "terms": {
+                        "field": "arrondissement.keyword",
+                        "size": 3
+                    },
+                }
+            }
+        }
+    }).then(resp => {
+        const res = resp.body.aggregations.arrondissement.buckets.map(({key, doc_count}) => ({
+            arrondissement: key,
+            count: doc_count
+        }));
+        callback(res)
+    })
 }
