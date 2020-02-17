@@ -61,7 +61,26 @@ exports.statsByType = (client, callback) => {
 
 exports.statsByMonth = (client, callback) => {
     // TODO Trouver le top 10 des mois avec le plus d'anomalies
-    callback([]);
+    client.search({
+        index: indexName,
+        body: {
+            "size": 0,
+            "aggs": {
+                "mois_annee": {
+                    "terms": {
+                        "field": "mois_annee.keyword",
+                        "size": 10
+                    },
+                }
+            }
+        }
+    }).then(resp => {
+        const res = resp.body.aggregations.mois_annee.buckets.map(({key, doc_count}) => ({
+            month: key,
+            count: doc_count
+        }));
+        callback(res)
+    })
 }
 
 exports.statsPropreteByArrondissement = (client, callback) => {

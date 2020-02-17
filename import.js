@@ -3,6 +3,8 @@ const csv = require('csv-parser');
 const fs = require('fs');
 const {Client} = require('@elastic/elasticsearch');
 const indexName = config.get('elasticsearch.index_name');
+const {bufferCount, concatMap, delay} = require('rxjs/operators');
+const {from, of} = require('rxjs');
 
 async function run() {
     // Create Elasticsearch client
@@ -14,6 +16,7 @@ async function run() {
     });
 
     let anomalies = [];
+    let counter = 0;
     // Read CSV file
     fs.createReadStream('dataset/dans-ma-rue.csv')
         .pipe(csv({
@@ -37,41 +40,42 @@ async function run() {
             });
             // console.log(anomalies);
         })
-        .on('end', async () => {
-            let buffer = [];
-            for (let i = 0; i < anomalies.length; i++) {
-                buffer.push(anomalies[i]);
-                if ((i % 20000 === 0 && i !== 0) || i === anomalies.length - 1) {
-
-                    console.log(i);
-                    client.bulk(createBulkInsertQuery(buffer), (err, resp) => {
-                        if (err) console.trace(err.message);
-                        else console.log(`Inserted ${resp.body.items.length} anomalies`);
-                        client.close();
-                    });
-                    await sleep(1000);
-                    buffer = [];
-                }
-            }
-
-            console.log('Terminated!');
+        .on('end', () => {
+            from(anomalies).pipe(
+                bufferCount(20000),
+                concatMap(data => of(data).pipe(delay(500)))
+            ).subscribe(bufferedAnomalies => {
+                counter += bufferedAnomalies.length;
+                console.log(counter);
+                client.bulk(createBulkInsertQuery(bufferedAnomalies), (err, resp) => {
+                    if (err) console.trace(err.message);
+                    else console.log(`Inserted ${resp.body.items.length} anomalies`);
+                    client.close();
+                });
+            });
         });
-}
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // Fonction utilitaire permettant de formatter les données pour l'insertion "bulk" dans elastic
 function createBulkInsertQuery(anomalies) {
     const body = anomalies.reduce((acc, anomalie) => {
         const {object_id, ...rest} = anomalie;
+        // Ajout d'un agregat de données pour le top 10 des mois avec le plus d'anomalies.
+        const restWithMoisAnnee = {
+            ...rest,
+            "mois_annee": formatMoisAnnee(rest.mois_declaration, rest.annee_declaration)
+        };
         acc.push({index: {_index: indexName, _type: '_doc', _id: anomalie.object_id}})
-        acc.push(rest);
+        acc.push(restWithMoisAnnee);
         return acc
     }, []);
 
     return {body};
+}
+
+function formatMoisAnnee(mois, annee) {
+    const formattedNumber = ("0" + mois).slice(-2);
+    return `${formattedNumber}/${annee}`;
 }
 
 run().catch(console.error);

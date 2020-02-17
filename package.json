@@ -6,7 +6,8 @@
     "config": "^3.2.5",
     "csv-parser": "^2.3.2",
     "express": "^4.17.1",
-    "moment": "^2.24.0"
+    "moment": "^2.24.0",
+    "rxjs": "^6.5.4"
   },
   "scripts": {
     "import": "node import.js",
