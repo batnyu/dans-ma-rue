@@ -37,7 +37,7 @@ async function run() {
             });
             // console.log(anomalies);
         })
-        .on('end', () => {
+        .on('end', async () => {
             let buffer = [];
             for (let i = 0; i < anomalies.length; i++) {
                 buffer.push(anomalies[i]);
@@ -49,12 +49,17 @@ async function run() {
                         else console.log(`Inserted ${resp.body.items.length} anomalies`);
                         client.close();
                     });
+                    await sleep(1000);
                     buffer = [];
                 }
             }
 
             console.log('Terminated!');
         });
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // Fonction utilitaire permettant de formatter les données pour l'insertion "bulk" dans elastic
