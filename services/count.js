@@ -22,5 +22,29 @@ exports.count = (client, from, to, callback) => {
 }
 
 exports.countAround = (client, lat, lon, radius, callback) => {
-    
+    client.count({
+        index: indexName,
+        body: {
+            query: {
+                bool : {
+                    must : {
+                        match_all : {}
+                    },
+                    filter : {
+                        geo_distance : {
+                            distance : radius,
+                            location : {
+                                lat : lat,
+                                lon : lon
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }).then(resp => {
+        callback({
+            count: resp.body.count
+        })
+    })
 }
