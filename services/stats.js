@@ -25,7 +25,38 @@ exports.statsByArrondissement = (client, callback) => {
 
 exports.statsByType = (client, callback) => {
     // TODO Trouver le top 5 des types et sous types d'anomalies
-    callback([]);
+    client.search({
+        index: indexName,
+        body: {
+            "aggs": {
+                "arrondissement": {
+                    "terms": {
+                        "field": "type.keyword",
+                        "size": 5
+                    },
+
+                    "aggs": {
+                        "sous_type": {
+                            "terms": {
+                                "field": "sous_type.keyword",
+                                "size": 5
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }).then(resp => {
+        const res = resp.body.aggregations.arrondissement.buckets.map(({key, doc_count, sous_type}) => ({
+            type: key,
+            count: doc_count,
+            sous_types: sous_type.buckets.map(({key, doc_count}) => ({
+                sous_type: key,
+                count: doc_count
+            }))
+        }));
+        callback(res)
+    })
 }
 
 exports.statsByMonth = (client, callback) => {
