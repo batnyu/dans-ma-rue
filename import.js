@@ -41,9 +41,6 @@ async function run() {
             let buffer = [];
             for (let i = 0; i < anomalies.length; i++) {
                 buffer.push(anomalies[i]);
-                setTimeout(() => {
-
-                }, 2000);
                 if ((i % 20000 === 0 && i !== 0) || i === anomalies.length - 1) {
 
                     console.log(i);
